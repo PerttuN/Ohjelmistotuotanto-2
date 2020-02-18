@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.1.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <title>Varastokirjanpito</title>
+    <style>
+        .ui-widget-overlay {
+            opacity: 1;
+        }
+        .ui-dialog-titlebar-close {
+            visibility: hidden;
+        }        
+        
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 10px;
+        }
+
+        #lisays {
+            margin: 1em;
+        }
+        #dialogi {
+            display: none;
+        }
+        #dialogi input[type="text"] {
+            display: block;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            haeTuotteet();
+
+            $("#hakulomake").submit(function(event) {
+                var hakulauseke = $(this).serializeArray();
+                if (hakulauseke[hakulauseke.length-1]["value"] == "") {
+                    hakulauseke.pop();
+                }
+                console.log("Hakulauseke: " + $.param(hakulauseke));
+                haeTuotteet($.param(hakulauseke));
+                event.preventDefault();
+            });
+
+            // Dialogi tuotteiden lisäykselle ja muokkaukselle.
+            $("#dialogi").dialog({
+                    autoOpen: false,
+                    buttons: [
+                        {
+                            id: "dialogiNappi",
+                            text: "Lisää",
+                            click: function() {
+                                if ($.trim($("#nimi_lisays").val()) === "" || $.trim($("#maara_lisays").val()) === "" || $.trim($("#yksikko_lisays").val()) === "" || $.trim($("#sijainti_lisays").val()) === "") {
+                                    alert("Anna arvo kaikki kenttiin!");
+                                    return false;
+                                } else {
+                                    var toiminto = $("#dialogiNappi").button("option", "label");
+                                    var lauseke = $("#lisayslomake").serialize();
+
+                                    if (toiminto === "Muokkaa") { // Muokataan
+                                        console.log("Muokkauslauseke: " + lauseke);
+                                        muokkaaTuotetta(lauseke, $("#id_muokkaus").val());
+                                    } else { // Lisätään
+                                        console.log("Lisäyslauseke: " + lauseke);
+                                        lisaaTuote(lauseke);
+                                    }
+
+                                    $("#lisayslomake")[0].reset();
+                                    $(this).dialog("close");
+
+                                    if (toiminto === "Muokkaa") { // // Palautetaan lomake lisäystyyppiseksi                                        
+                                        $("#dialogi").dialog("option", "title", "Lisää uusi tuote");
+                                        $('#dialogiNappi').button('option', 'label', 'Lisää');
+                                        $("#id_muokkaus").remove();
+                                    }
+                                }
+                            },
+                        },
+                        {
+                            text: "Peruuta",
+                            click: function() {
+                                $("#lisayslomake")[0].reset();
+                                $(this).dialog("close");
+
+                                if ($("#dialogiNappi").button("option", "label") === "Muokkaa") { // // Palautetaan lomake lisäystyyppiseksi                                        
+                                    $("#dialogi").dialog("option", "title", "Lisää uusi tuote");
+                                    $('#dialogiNappi').button('option', 'label', 'Lisää');
+                                    $("#id_muokkaus").remove();
+                                }
+                            },
+                        }
+                    ],
+                    closeOnEscape: false,
+                    draggable: false,
+                    modal: true,
+                    resizable: false
+            });
+
+            $("#lisays").click(function() {
+                $("#dialogi").dialog("open");
+            });
+        });
+
+        // Haetaan tuotteet tietokannasta.
+        function haeTuotteet(hakulauseke) {
+            $.get(
+                "http://localhost:3000/api/varastosaldo/haku", 
+                hakulauseke
+            ).done(function(data, textStatus, jqXHR) {
+                $("#tuotteet").empty(); //Poistetaan vanhat arvot taulukosta
+
+                var tuotteet = document.getElementById("tuotteet");
+                if (data.length == 0) {
+                    rivi = tuotteet.insertRow(-1);
+                    rivi.insertCell(-1).outerHTML = "<td colspan=\"9\">Hakuehtojasi vastaavia tuotteita ei löytynyt.</td>";
+                } else {
+                    data.forEach(function (tuote) {
+                        rivi = tuotteet.insertRow(-1);
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.id + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.nimi + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.maara + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.yksikko + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.sijainti + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.kommentit + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"poistaTuote(" + tuote.id + ")\">Poista</button></td>";
+                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"muokkausLomake(" + tuote.id + ")\">Muokkaa</button></td>";
+                    });
+                }
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
+        function lisaaTuote(lisayslauseke) {
+            $.post(
+                "http://localhost:3000/api/varastosaldo/lisaa", 
+                lisayslauseke
+            ).done(function (data, textStatus, jqXHR) {
+                if (data.hasOwnProperty('status') && data.status === "not ok") {
+                    alert("Lisäys ei onnistunut: " + data.status_text);
+                }
+                $("#hakulomake")[0].reset();
+                $("#hakulomake").submit();
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
+        function poistaTuote(id) {
+            $.get(
+                "http://localhost:3000/api/varastosaldo/poista", 
+                "id=" + id
+            ).done(function (data, textStatus, jqXHR) {
+                $("#hakulomake").submit();
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
+        // Muokataan tuotteita.
+        function muokkausLomake(id) {
+            $.get(
+                "http://localhost:3000/api/varastosaldo/" + id,
+            ).done(function (data, textStatus, jqXHR) {
+                if (data.hasOwnProperty('status') && data.status === "not ok") {
+                    alert("Tuotteen (id: " + id + ") tietojen haku ei onnistunut: " + data.status_text);
+                }
+
+                if (data.length == 0) {
+                    alert("ID " + id + " ei löytynyt yhtään tuotetta!");
+                } else {
+                    $("#dialogi").dialog("option", "title", "Muokkaa tuotteen tietoja");
+                    $('#dialogiNappi').button('option', 'label', 'Muokkaa');
+                    $("#lisayslomake").prepend('<input type="hidden" id="id_muokkaus" name="id" value="' + data[0].id + '" readonly="readonly">');
+
+                    $("#nimi_lisays").val(data[0].nimi);
+                    $("#maara_lisays").val(data[0].maara);
+                    $("#yksikko_lisays").val(data[0].yksikko);
+                    $("#sijainti_lisays").val(data[0].sijainti);
+                    $("#kommentit_lisays").val(data[0].kommentit);
+
+                    $("#dialogi").dialog("open");
+                }
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
+        function muokkaaTuotetta(muokkauslauseke, id) {
+            $.ajax({
+                url: "http://localhost:3000/api/varastosaldo/" + id,
+                method: 'post',
+                data: muokkauslauseke,
+                success: function (data, status, jqXHR) {
+                    if (data.hasOwnProperty('status') && data.status === "not ok") {
+                        alert("Muokkaus ei onnistunut: " + data.status_text);
+                    }
+                    $("#hakulomake")[0].reset();
+                    $("#hakulomake").submit();
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.log("status=" + textStatus + ", " + errorThrown);
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <form id="hakulomake">
+        <fieldset>
+            <legend>Hakuehdot</legend>
+            <label for="nimi_haku">Tuote:</label>
+            <input type="text" id="nimi_haku" name="nimi">
+            <input type="submit" value="Hae">
+        </fieldset>
+    </form>
+
+    <button id="lisays">Lisää Tuote</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nimi</th>
+                <th>Määrä</th>
+                <th>Yksikkö</th>
+                <th>Sijainti</th>
+                <th>Kommentit</th>
+                <th colspan="2"></th>
+            </tr>  
+        </thead>          
+        <tbody id="tuotteet">
+            <tr>
+                <td colspan="9">Aseta haluamasi hakuehdot ylläolevaan lomakkeeseen ja paina Hae-nappia.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div id="dialogi" title="Lisää uusi tuote">
+        <form id="lisayslomake">
+            <input type="text" id="nimi_lisays" name="nimi" placeholder="Nimi">
+            <input type="text" id="maara_lisays" name="maara" placeholder="Määrä">
+            <input type="text" id="yksikko_lisays" name="yksikko" placeholder="Yksikkö">
+            <input type="text" id="sijainti_lisays" name="sijainti" placeholder="Sijainti">
+            <input type="text" id="kommentit_lisays" name="kommentit" placeholder="Kommentit">
+            </select>
+        </form>
+    </div>
+</body>
+</html>
