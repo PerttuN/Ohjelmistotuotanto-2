@@ -4,8 +4,10 @@
 <head>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.1.0.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <title>Varastokirjanpito</title>
     <style>
         .ui-widget-overlay {
@@ -19,7 +21,8 @@
             border: 1px solid #000;
         }
         th, td {
-            padding: 10px;
+            padding: 5px;
+            text-align: center;
         }
 
         #lisays {
@@ -31,10 +34,24 @@
         #dialogi input[type="text"] {
             display: block;
         }
+
+        fieldset.scheduler-border {
+            border: solid 1px #DDD !important;
+            padding: 0 10px 10px 10px;
+            border-bottom: none;
+        }
+
+        legend.scheduler-border {
+            width: auto;
+            border: none;
+            font-size: 14px;
+        }
     </style>
     <script>
         $(document).ready(function () {
             haeTuotteet();
+            haeYksikkotyypit();
+            haeSijainti();
 
             $("#hakulomake").submit(function(event) {
                 var hakulauseke = $(this).serializeArray();
@@ -54,28 +71,35 @@
                             id: "dialogiNappi",
                             text: "Lisää",
                             click: function() {
-                                if ($.trim($("#nimi_lisays").val()) === "" || $.trim($("#maara_lisays").val()) === "" || $.trim($("#yksikko_lisays").val()) === "" || $.trim($("#sijainti_lisays").val()) === "") {
+                                if ($.trim($("#nimi_lisays").val()) === "" || $.trim($("#maara_lisays").val()) === "" || $.trim($("#yksikkotyyppi_lisays").val()) === "" || $.trim($("#yksikkohinta_lisays").val()) === "" || $.trim($("#sijainti_lisays").val()) === "") {
                                     alert("Anna arvo kaikki kenttiin!");
                                     return false;
                                 } else {
                                     var toiminto = $("#dialogiNappi").button("option", "label");
+
+                                    console.log(document.getElementById("maara_lisays").value);
+                                    $("#saldo_lisays").val((document.getElementById("maara_lisays").value)*(document.getElementById("yksikkohinta_lisays").value));
                                     var lauseke = $("#lisayslomake").serialize();
 
                                     if (toiminto === "Muokkaa") { // Muokataan
                                         console.log("Muokkauslauseke: " + lauseke);
-                                        muokkaaTuotetta(lauseke, $("#id_muokkaus").val());
+                                        muokkaaTuotetta(lauseke, $("#ID_muokkaus").val());
                                     } else { // Lisätään
                                         console.log("Lisäyslauseke: " + lauseke);
                                         lisaaTuote(lauseke);
                                     }
 
                                     $("#lisayslomake")[0].reset();
+                                    $("#yksikkotyyppi_lisays").prepend('<option value=""></option>');
+                                    $("#sijainti_lisays").prepend('<option value=""></option>');
+                                    $("#yksikkotyyppi_lisays").prop('selectedIndex', 0);
+                                    $("#sijainti_lisays").prop('selectedIndex', 0);
                                     $(this).dialog("close");
 
                                     if (toiminto === "Muokkaa") { // // Palautetaan lomake lisäystyyppiseksi                                        
                                         $("#dialogi").dialog("option", "title", "Lisää uusi tuote");
                                         $('#dialogiNappi').button('option', 'label', 'Lisää');
-                                        $("#id_muokkaus").remove();
+                                        $("#ID_muokkaus").remove();
                                     }
                                 }
                             },
@@ -84,12 +108,16 @@
                             text: "Peruuta",
                             click: function() {
                                 $("#lisayslomake")[0].reset();
+                                $("#yksikkotyyppi_lisays").prepend('<option value=""></option>');
+                                $("#sijainti_lisays").prepend('<option value=""></option>');
+                                $("#yksikkotyyppi_lisays").prop('selectedIndex', 0);
+                                $("#sijainti_lisays").prop('selectedIndex', 0);
                                 $(this).dialog("close");
 
                                 if ($("#dialogiNappi").button("option", "label") === "Muokkaa") { // // Palautetaan lomake lisäystyyppiseksi                                        
                                     $("#dialogi").dialog("option", "title", "Lisää uusi tuote");
                                     $('#dialogiNappi').button('option', 'label', 'Lisää');
-                                    $("#id_muokkaus").remove();
+                                    $("#ID_muokkaus").remove();
                                 }
                             },
                         }
@@ -105,10 +133,48 @@
             });
         });
 
+        function haeYksikkotyypit() {
+            $.get(
+                "http://localhost:3000/api/varastokirjanpito/yksikkotyyppi" 
+            ).done(function (data, textStatus, jqXHR) {
+                data.forEach(function (yksikko) {
+                    $('#yksikkotyyppi_haku')
+                        .append($("<option></option>")
+                            .attr("value", yksikko.ID)
+                            .text(yksikko.nimi));
+                    $('#yksikkotyyppi_lisays')
+                        .append($("<option></option>")
+                            .attr("value", yksikko.ID)
+                            .text(yksikko.nimi));
+                });
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
+        function haeSijainti() {
+            $.get(
+                "http://localhost:3000/api/varastokirjanpito/sijainti" 
+            ).done(function (data, textStatus, jqXHR) {
+                data.forEach(function (sijainti) {
+                    $('#sijainti_haku')
+                        .append($("<option></option>")
+                            .attr("value", sijainti.ID)
+                            .text(sijainti.nimi));
+                    $('#sijainti_lisays')
+                        .append($("<option></option>")
+                            .attr("value", sijainti.ID)
+                            .text(sijainti.nimi));
+                });
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.log("status=" + textStatus + ", " + errorThrown);
+            });
+        }
+
         // Haetaan tuotteet tietokannasta.
         function haeTuotteet(hakulauseke) {
             $.get(
-                "http://localhost:3000/api/varastosaldo/haku", 
+                "http://localhost:3000/api/varasto_riistavesi/haku", 
                 hakulauseke
             ).done(function(data, textStatus, jqXHR) {
                 $("#tuotteet").empty(); //Poistetaan vanhat arvot taulukosta
@@ -120,14 +186,16 @@
                 } else {
                     data.forEach(function (tuote) {
                         rivi = tuotteet.insertRow(-1);
-                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.id + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.ID + "</td>";
                         rivi.insertCell(-1).outerHTML = "<td>" + tuote.nimi + "</td>";
                         rivi.insertCell(-1).outerHTML = "<td>" + tuote.maara + "</td>";
-                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.yksikko + "</td>";
-                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.sijainti + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.yksikkotyyppi_ID + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.yksikkohinta + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.saldo + "</td>";
+                        rivi.insertCell(-1).outerHTML = "<td>" + tuote.sijainti_ID + "</td>";
                         rivi.insertCell(-1).outerHTML = "<td>" + tuote.kommentit + "</td>";
-                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"poistaTuote(" + tuote.id + ")\">Poista</button></td>";
-                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"muokkausLomake(" + tuote.id + ")\">Muokkaa</button></td>";
+                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"poistaTuote(" + tuote.ID + ")\">Poista</button></td>";
+                        rivi.insertCell(-1).outerHTML = "<td><button onclick=\"muokkausLomake(" + tuote.ID + ")\">Muokkaa</button></td>";
                     });
                 }
             }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -137,23 +205,25 @@
 
         function lisaaTuote(lisayslauseke) {
             $.post(
-                "http://localhost:3000/api/varastosaldo/lisaa", 
+                "http://localhost:3000/api/varasto_riistavesi/lisaa", 
                 lisayslauseke
             ).done(function (data, textStatus, jqXHR) {
                 if (data.hasOwnProperty('status') && data.status === "not ok") {
                     alert("Lisäys ei onnistunut: " + data.status_text);
                 }
                 $("#hakulomake")[0].reset();
+                $("#yksikkotyyppi_lisäys").prop('selectedIndex', 0);
+                $("#sijainti_lisäys").prop('selectedIndex', 0);
                 $("#hakulomake").submit();
             }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.log("status=" + textStatus + ", " + errorThrown);
             });
         }
 
-        function poistaTuote(id) {
+        function poistaTuote(ID) {
             $.get(
-                "http://localhost:3000/api/varastosaldo/poista", 
-                "id=" + id
+                "http://localhost:3000/api/varasto_riistavesi/poista", 
+                "ID=" + ID
             ).done(function (data, textStatus, jqXHR) {
                 $("#hakulomake").submit();
             }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -162,12 +232,12 @@
         }
 
         // Muokataan tuotteita.
-        function muokkausLomake(id) {
+        function muokkausLomake(ID) {
             $.get(
-                "http://localhost:3000/api/varastosaldo/" + id,
+                "http://localhost:3000/api/varasto_riistavesi/" + ID,
             ).done(function (data, textStatus, jqXHR) {
                 if (data.hasOwnProperty('status') && data.status === "not ok") {
-                    alert("Tuotteen (id: " + id + ") tietojen haku ei onnistunut: " + data.status_text);
+                    alert("Tuotteen (ID: " + ID + ") tietojen haku ei onnistunut: " + data.status_text);
                 }
 
                 if (data.length == 0) {
@@ -175,12 +245,14 @@
                 } else {
                     $("#dialogi").dialog("option", "title", "Muokkaa tuotteen tietoja");
                     $('#dialogiNappi').button('option', 'label', 'Muokkaa');
-                    $("#lisayslomake").prepend('<input type="hidden" id="id_muokkaus" name="id" value="' + data[0].id + '" readonly="readonly">');
+                    $("#lisayslomake").prepend('<input type="hidden" ID="ID_muokkaus" name="ID" value="' + data[0].ID + '" readonly="readonly">');
 
                     $("#nimi_lisays").val(data[0].nimi);
                     $("#maara_lisays").val(data[0].maara);
-                    $("#yksikko_lisays").val(data[0].yksikko);
-                    $("#sijainti_lisays").val(data[0].sijainti);
+                    $("#yksikkotyyppi_lisays").val(data[0].yksikkotyyppi_ID);
+                    $("#yksikkohinta_lisays").val(data[0].yksikkohinta);
+                    $("#saldo_lisays").val(data[0].maara*data[0].yksikkohinta);
+                    $("#sijainti_lisays").val(data[0].sijainti_ID);
                     $("#kommentit_lisays").val(data[0].kommentit);
 
                     $("#dialogi").dialog("open");
@@ -190,9 +262,9 @@
             });
         }
 
-        function muokkaaTuotetta(muokkauslauseke, id) {
+        function muokkaaTuotetta(muokkauslauseke, ID) {
             $.ajax({
-                url: "http://localhost:3000/api/varastosaldo/" + id,
+                url: "http://localhost:3000/api/varasto_riistavesi/" + ID,
                 method: 'post',
                 data: muokkauslauseke,
                 success: function (data, status, jqXHR) {
@@ -200,6 +272,8 @@
                         alert("Muokkaus ei onnistunut: " + data.status_text);
                     }
                     $("#hakulomake")[0].reset();
+                    $("#yksikkotyyppi_lisäys").prop('selectedIndex', 0);
+                    $("#sijainti_lisäys").prop('selectedIndex', 0);
                     $("#hakulomake").submit();
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -210,24 +284,55 @@
     </script>
 </head>
 <body>
+
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Varastonhallinta</a></li>
+            <li><a href="#">Budjetinhallinta</a></li>
+            <li><a href="#">Tilaukset</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li class="dropdown"><a class="dropdown-toggle" data-toggle="dropdown" href="#">Koulu<span class="caret"></span></a>
+                <ul class="dropdown-menu">
+                  <li><a href="#">Riistaveden koulu</a></li>
+                  <li><a href="#">Melalahden koulu</a></li>
+                </ul>
+              </li>
+          </ul>
+        </div>
+      </nav>
+
+    <div class="container">
     <form id="hakulomake">
-        <fieldset>
-            <legend>Hakuehdot</legend>
-            <label for="nimi_haku">Tuote:</label>
-            <input type="text" id="nimi_haku" name="nimi">
-            <input type="submit" value="Hae">
+        <fieldset class="scheduler-border">
+            <legend class="scheduler-border">Hakuehdot</legend>
+            <div>
+                <label for="nimi_haku">Tuote:</label>
+                <input type="text" id="nimi_haku" name="nimi">
+                <select id="sijainti_haku" name="sijainti_ID">
+                    <option value=""></option>
+                </select>
+                <input type="submit" value="Hae">
+            </div>
         </fieldset>
     </form>
+    </div>
 
+    <div class="container">
     <button id="lisays">Lisää Tuote</button>
+    </div>
 
-    <table>
+    <div class="container">
+    <table class="table table-striped table-bordered table-hover table-condensed table-responsive">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Nimi</th>
                 <th>Määrä</th>
                 <th>Yksikkö</th>
+                <th>Yksikköhinta</th>
+                <th>Saldo</th>
                 <th>Sijainti</th>
                 <th>Kommentit</th>
                 <th colspan="2"></th>
@@ -239,13 +344,20 @@
             </tr>
         </tbody>
     </table>
+    </div>
 
     <div id="dialogi" title="Lisää uusi tuote">
         <form id="lisayslomake">
             <input type="text" id="nimi_lisays" name="nimi" placeholder="Nimi">
             <input type="text" id="maara_lisays" name="maara" placeholder="Määrä">
-            <input type="text" id="yksikko_lisays" name="yksikko" placeholder="Yksikkö">
-            <input type="text" id="sijainti_lisays" name="sijainti" placeholder="Sijainti">
+            <select id="yksikkotyyppi_lisays" name="yksikkotyyppi_ID">
+                <option value=""></option>
+            </select>
+            <input type="text" id="yksikkohinta_lisays" name="yksikkohinta" placeholder="Yksikköhinta">
+            <input type="hidden" id="saldo_lisays" name="saldo">
+            <select id="sijainti_lisays" name="sijainti_ID">
+                <option value=""></option>
+            </select>
             <input type="text" id="kommentit_lisays" name="kommentit" placeholder="Kommentit">
             </select>
         </form>
