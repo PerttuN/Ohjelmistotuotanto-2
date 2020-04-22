@@ -1,0 +1,18 @@
+ASENNUSOHJEET:
+
+1. Tietokoneelle täytyy asentaa WampServer tietokantayhteyttä
+varten. Node täytyy asentaa siirtymällä konsolilla projektin hakemistoon 
+ja asentamalla npm install. Asenna muut moduulit kirjoittamalla 
+npm install express-session.
+
+2.Siirry WampServerillä PhpMyadminniin ja aja sql tiedosto.
+
+3. Käynnistä sovellus konsolilla kirjoittamalla projektin hakemistossa node server.js.
+
+4. Avaa selain ja kirjoita hakukenttään localhost:3000. Sovelluksen kirjautumissivu pitäisi avautua.
+
+KÄYTTÄJÄTUNNUKSET:
+
+Opettaja: Käyttäjätunnus:Opettaja, Salasana: Opettaja123
+
+Opiskelija: Käyttäjätunnus: Opiskelija, Salasana: Opiskelija123

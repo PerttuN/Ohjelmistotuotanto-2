@@ -1,0 +1,30 @@
+<style>
+    div {
+        height: 300px;
+        width: 400px;
+        border-style: outset;
+        border-radius: 15px;
+        border-color: black;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        margin-top: -200px;
+        margin-left: -200px;
+        font-family: helvetica;
+    }
+    
+    input{
+        text-decoration: none;
+        font-size: 25px;
+    }
+    </style>
+
+<div>
+<h1><center>Kirjautuminen</center></h1>
+        <center><form method='post' action='/login'>
+            <input name='name' placeholder='Käyttäjä' required /></br></br>
+            <input type='password' name='password' placeholder='Salasana' required /></br></br>
+            <input type='submit' />
+        </form>
+        </center>
+</div>
